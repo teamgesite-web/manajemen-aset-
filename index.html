@@ -1678,6 +1678,7 @@
             }
 
             saveAssetsToStorage();
+		persistToFirebase();
             closeAssetFormModal();
             selectedAssetId = assetData.id;
             renderAll();
@@ -2205,12 +2206,9 @@
             }, 4000);
         }
     </script>
-<!-- Pustaka Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-
 <script>
-  // Konfigurasi Firebase Anda
   const firebaseConfig = {
     apiKey: "AIzaSyCL088TuE-hprEcxjpaACXsVY5cc5qVJfk",
     authDomain: "manajemen-data-aset.firebaseapp.com",
@@ -2221,28 +2219,37 @@
     appId: "1:564939840608:web:809585d1e2a0cf0bf03705",
     measurementId: "G-ZHFSXWMTYY"
   };
-
-  // Inisialisasi Firebase
   firebase.initializeApp(firebaseConfig);
-  const dbRef = firebase.database().ref("peta_aset/data");
+  const dbRef = firebase.database().ref("peta_aset");
 
-  // Sinkronisasi Real-time: Otomatis mendengarkan perubahan data secara LIVE
-  dbRef.on("value", (snapshot) => {
-    const val = snapshot.val();
-    assets = val ? Object.values(val) : [];
-    if (typeof draw === 'function') draw();
-    if (typeof render === 'function') render();
-  });
-
-  // Fungsi untuk menyimpan perubahan data secara otomatis ke Firebase
-  function persist() {
-    if (typeof LSS !== 'undefined') {
-      localStorage.setItem(LSS, JSON.stringify(assets));
-    }
-    const dataObj = {};
-    assets.forEach(a => { dataObj[a.id] = a; });
-    dbRef.set(dataObj).catch(err => console.log("Gagal menyinkronkan ke server"));
+  // Fungsi simpan manual yang aman dari freeze
+  function persistToFirebase() {
+  const statusEl = document.getElementById('firebase-status');
+  if (statusEl) {
+    statusEl.innerText = "Status Firebase: Menyimpan...";
+    statusEl.style.color = "#f39c12"; // Warna kuning/oranye saat proses
   }
+
+  const dataObj = {};
+  if (typeof assets !== 'undefined') {
+    assets.forEach(a => { if(a && a.id) dataObj[a.id] = a; });
+    
+    firebase.database().ref("peta_aset").set(dataObj).then(() => {
+      console.log("Data berhasil disinkronkan ke Firebase!");
+      if (statusEl) {
+        statusEl.innerText = "Status Firebase: Tersinkron (Online)";
+        statusEl.style.color = "#27ae60"; // Warna hijau jika berhasil
+      }
+    }).catch(err => {
+      console.log("Gagal sync:", err);
+      if (statusEl) {
+        statusEl.innerText = "Status Firebase: Gagal Sinkron!";
+        statusEl.style.color = "#c0392b"; // Warna merah jika gagal
+      }
+    });
+  }
+}
 </script>
 </body>
+<div id="firebase-status" style="position: fixed; bottom: 10px; right: 10px; background: #fff; padding: 8px 12px; border: 1px solid #ccc; border-radius: 5px; font-size: 12px; z-index: 9999; color: #666; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">Status Firebase: Siap</div>
 </html>
